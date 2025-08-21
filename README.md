@@ -10,6 +10,20 @@ Simple service that listens on a port and refreshes the contents of a directory 
 
     ./deploy_static_site refresh_config.json
 
+## Requirements
+
+This program assumes the following:
+
+    - The code that you want to copy lives under the ./web directory of your
+      repo.
+    - The only existing content under the target directory that you need to
+      preserve is the .well-known directory.
+    - Your server has `git` and `rsync` executables, and the user
+      running the refresh program can access them in its path.
+
+If you want to use this program and not make these assumptions, feel free to
+submit a pull request.
+
 ## Config file format
 
     {
