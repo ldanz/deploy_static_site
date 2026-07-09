@@ -14,8 +14,6 @@ Simple service that listens on a port and refreshes the contents of a directory 
 
 This program assumes the following:
 
-- The code that you want to copy lives under the ./web directory of your
-  repo.
 - The only existing content under the target directory that you need to
   preserve is the .well-known directory.
 - Your server has `git` and `rsync` executables, and the user
@@ -23,6 +21,13 @@ This program assumes the following:
 
 If you want to use this program and not make these assumptions, feel free to
 submit a pull request.
+
+## Options
+
+- `source_dir` is the directory within the git repository where the webapp
+  source files live.  If not specified, this defaults to the ./web
+  sub-directory, thus expecting that the code that you want to copy lives under
+  the ./web directory of your repo.
 
 ## Config file format
 
@@ -36,6 +41,7 @@ submit a pull request.
             },
             {
                 "branch": "my_second_branch",
+                "source_dir": ".",
                 "target_dir": "/var/http/site2"
             }
         ]
