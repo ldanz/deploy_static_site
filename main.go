@@ -17,11 +17,13 @@ import (
 type options struct {
 	GitURL    string
 	GitBranch string
+	SourceDir string
 	TargetDir string
 }
 
 type BranchConfig struct {
 	Branch    string `json:"branch"`
+	SourceDir string `json:"source_dir"`
 	TargetDir string `json:"target_dir"`
 }
 
@@ -31,7 +33,7 @@ type Config struct {
 	BranchConfigs []BranchConfig `json:"branch_configs"`
 }
 
-func (c Config) Validate() error {
+func (c Config) SetDefaultsAndValidate() error {
 	problems := []string{}
 
 	if c.GitURL == "" {
@@ -49,6 +51,13 @@ func (c Config) Validate() error {
 	for i, branchConfig := range c.BranchConfigs {
 		if branchConfig.Branch == "" {
 			problems = append(problems, fmt.Sprintf("branch config #%d (0-indexed) missing branch", i))
+		}
+		if branchConfig.SourceDir == "" {
+			// Default to "web" for backwards-compatibility
+			c.BranchConfigs[i].SourceDir = "web/"
+		} else if branchConfig.SourceDir[len(branchConfig.SourceDir)-1] != '/' {
+			// Ensure that the source dir ends with a slash, for proper rsync behavior
+			c.BranchConfigs[i].SourceDir = fmt.Sprintf("%s/", branchConfig.SourceDir)
 		}
 		if branchConfig.TargetDir == "" {
 			problems = append(problems, fmt.Sprintf("branch config #%d (0-indexed) missing target_dir", i))
@@ -75,7 +84,7 @@ func parseConfig() Config {
 	if err != nil {
 		log.Fatalf("error parsing config file: %s", err)
 	}
-	if err = config.Validate(); err != nil {
+	if err = config.SetDefaultsAndValidate(); err != nil {
 		log.Fatalf("invalid config content: %s", err)
 	}
 	return config
@@ -104,7 +113,7 @@ func refreshSite(options options) error {
 	stdout.Reset()
 	stderr.Reset()
 
-	rsyncCmd := exec.Command("rsync", "-c", "-r", "--delete", "--exclude=.well-known", "web/", options.TargetDir)
+	rsyncCmd := exec.Command("rsync", "-c", "-r", "--delete", "--exclude=.well-known", options.SourceDir, options.TargetDir)
 	rsyncCmd.Dir = tmpDir
 	rsyncCmd.Stdout = &stdout
 	rsyncCmd.Stderr = &stderr
@@ -191,6 +200,7 @@ func main() {
 		// find target dir based on branch
 		for _, branchConfig := range config.BranchConfigs {
 			if branchConfig.Branch == branch {
+				options.SourceDir = branchConfig.SourceDir
 				options.TargetDir = branchConfig.TargetDir
 				break
 			}

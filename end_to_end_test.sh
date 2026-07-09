@@ -20,6 +20,9 @@ touch "$well_known_file"
 mkdir -p "${tmpdir}/www/branch2"
 echo "file f content" > "${tmpdir}/www/branch2/file_f"
 
+mkdir -p "${tmpdir}/www/branch3"
+echo "file g initial content" > "${tmpdir}/www/branch3/file_g"
+
 # Set up local git server
 mkdir "${tmpdir}/gitserver"  # Top-level git server directory
 git_url="${tmpdir}/gitserver/project-repo.git"  
@@ -55,6 +58,15 @@ git commit -m 'add web content files c and d'
 git push -u origin b2
 git checkout -
 
+# Branch b3 puts content directly in the top-level directory, to test the source_dir override
+git checkout -b b3
+echo "file g content" > file_g
+echo "file h content" > file_h
+git add .
+git commit -m 'add top-level content files e and f'
+git push -u origin b3
+git checkout -
+
 popd
 
 # Create config file
@@ -70,6 +82,11 @@ cat <<CONFIG > "${tmpdir}/config.json"
         {
             "branch": "b2",
             "target_dir": "${tmpdir}/www/branch2"
+        },
+        {
+            "branch": "b3",
+            "source_dir": ".",
+            "target_dir": "${tmpdir}/www/branch3"
         }
     ]
 }
@@ -83,6 +100,9 @@ sleep 2
 
 # request refresh for branch 1
 curl --include -X POST localhost:8033/refresh -d '{"ref":"refs/heads/b1","otherfield":"othervalue"}'
+sleep 11 # wait for rate limit to reset
+# request refresh for branch 3
+curl --include -X POST localhost:8033/refresh -d '{"ref":"refs/heads/b3","otherfield":"yetanothervalue"}'
 sleep 2
 
 # stop server
@@ -95,6 +115,8 @@ kill $PID
 [ "$(cat "${tmpdir}/www/branch1/file_a")" == "file a content" ]
 # - branch 2 has not changed
 ! [ -f "${tmpdir}/www/branch2/file_c" ]
+# - branch 3 has changed, using . (not ./web) as its source dir
+[ "$(cat "${tmpdir}/www/branch3/file_g")" == "file g content" ]
 
 # Remove tmpdir
 rm -rf "$tmpdir"
